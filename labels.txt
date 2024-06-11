@@ -1,0 +1,2 @@
+0 ok-sign
+1 no-sign

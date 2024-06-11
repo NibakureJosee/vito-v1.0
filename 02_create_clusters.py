@@ -57,3 +57,4 @@ for i in range(num_clusters):
     print(f"Cluster {i+1}: {len(cluster_images)} images")
 
 print("Clustering and copying complete.")
+
