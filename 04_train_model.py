@@ -21,6 +21,7 @@ def getImagesAndLabels(path, target_size=(100, 100)):
                 faceSamples.append(face)
                 Ids.append(customer_id)
         except Exception as e:
+            
             print(f"Error processing image {imagePath}: {e}")
     return faceSamples, Ids
 

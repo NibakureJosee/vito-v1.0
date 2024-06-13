@@ -28,6 +28,7 @@ images_folder = "dataset"
 image_files = [os.path.join(images_folder, img) for img in os.listdir(images_folder) if img.endswith('.jpg')]
 
 # Extract features for all images
+#array to store the features
 all_features = []
 for img_file in tqdm(image_files, desc="Extracting Features"):
     features = extract_features(img_file, vgg16_model)
@@ -42,11 +43,11 @@ kmeans = KMeans(n_clusters=num_clusters)
 kmeans.fit(all_features)
 labels = kmeans.labels_
 
-# Create folder for clusters at the same tree level
+# Create folder for clusters at the same tree level and copy
 clusters_folder = os.path.join(os.path.dirname(images_folder), "dataset-clusters")
 os.makedirs(clusters_folder, exist_ok=True)
 
-# Create folders for each cluster and copy images
+# Create folders for each cluster and copy images and organize image into cluster foler
 for i in range(num_clusters):
     cluster_images = [image_files[j] for j in range(len(image_files)) if labels[j] == i]
     cluster_folder = os.path.join(clusters_folder, f"Cluster-{i+1}")
@@ -57,4 +58,3 @@ for i in range(num_clusters):
     print(f"Cluster {i+1}: {len(cluster_images)} images")
 
 print("Clustering and copying complete.")
-

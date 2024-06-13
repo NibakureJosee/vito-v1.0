@@ -1,31 +1,24 @@
 import cv2
-import numpy as np
 import sqlite3
-from keras.models import load_model
 
 # Load pre-trained face recognition model
-face_recognizer = cv2.face.LBPHFaceRecognizer_create()
-face_recognizer.read("models/trained_lbph_face_recognizer_model.yml")
+faceRecognizer = cv2.face.LBPHFaceRecognizer_create()
+faceRecognizer.read("models/trained_lbph_face_recognizer_model.yml")
 
 # Load Haarcascade for face detection
-face_cascade = cv2.CascadeClassifier("models/haarcascade_frontalface_default.xml")
+faceCascade = cv2.CascadeClassifier("models/haarcascade_frontalface_default.xml")
 
-# Load the trained Keras model for sign prediction
-model = load_model("keras_Model.h5", compile=False)
+fontFace = cv2.FONT_HERSHEY_SIMPLEX
+fontScale = 0.6
+fontColor = (255, 255, 255)
+fontWeight = 2
+fontBottomMargin = 30
 
-# Load the labels
-with open("labels.txt", "r") as f:
-    class_names = f.readlines()
+nametagColor = (100, 180, 0)
+nametagHeight = 50
 
-# Define custom autocontrast function
-def autocontrast(image):
-    min_val = np.min(image)
-    max_val = np.max(image)
-    return (image - min_val) * (255.0 / (max_val - min_val))
-
-# Open a connection to the SQLite database
-conn = sqlite3.connect('customer_faces_data.db')
-c = conn.cursor()
+faceRectangleBorderColor = nametagColor
+faceRectangleBorderSize = 2
 
 # Open a connection to the first webcam
 camera = cv2.VideoCapture(0)
@@ -41,46 +34,40 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Detect faces
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    faces = faceCascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
     # For each face found
     for (x, y, w, h) in faces:
 
         # Recognize the face
-        customer_uid, confidence = face_recognizer.predict(gray[y:y + h, x:x + w])
+        customer_uid, Confidence = faceRecognizer.predict(gray[y:y + h, x:x + w])
+        # Connect to SQLite database
+        try:
+            conn = sqlite3.connect('customer_faces_data.db')
+            c = conn.cursor()
+            #print("Successfully connected to the database")
+        except sqlite3.Error as e:
+            print("SQLite error:", e)
 
-        # Retrieve customer name from the database
+
         c.execute("SELECT customer_name FROM customers WHERE customer_uid LIKE ?", (f"{customer_uid}%",))
         row = c.fetchone()
-        customer_name = row[0].split(" ")[0] if row else "Unknown"
+        if row:
+            customer_name = row[0].split(" ")[0]
+        else:
+            customer_name = "Unknown"
 
-        # Preprocess and make prediction on the face
-        face_image = gray[y:y + h, x:x + w]
-        face_image = cv2.resize(face_image, (224, 224))
-        face_image = autocontrast(face_image)
-        face_image = np.expand_dims(face_image, axis=0)
-        face_image = np.expand_dims(face_image, axis=-1)
-        face_image = face_image.astype(np.float32) / 255.0
+                    
+        if 45<Confidence<100:
+            # Create rectangle around the face
+            cv2.rectangle(frame, (x - 20, y - 20), (x + w + 20, y + h + 20), faceRectangleBorderColor, faceRectangleBorderSize)
 
-        # Predict sign
-        prediction = model.predict(face_image)
-        index = np.argmax(prediction)
-        class_name = class_names[index].strip()
-        confidence_score = prediction[0][index]
-
-        # Display the sign prediction and confidence score on the frame
-        cv2.putText(frame, f"Predicted Sign: {class_name}, Confidence: {confidence_score:.2f}", (x, y - 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-
-        # Display the recognized customer name and confidence on the frame
-        if confidence > 45:
-            cv2.rectangle(frame, (x - 20, y - 20), (x + w + 20, y + h + 20), (0, 255, 0), 2)
-            cv2.rectangle(frame, (x - 22, y - 50), (x + w + 22, y - 22), (100, 180, 0), -1)
-            cv2.putText(frame, f"{customer_name}: {confidence:.2f}%", (x, y - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
-                        (255, 255, 255), 2)
+             # Display name tag
+            cv2.rectangle(frame, (x - 22, y - nametagHeight), (x + w + 22, y - 22), nametagColor, -1)
+            cv2.putText(frame, str(customer_name) + ": " + str(round(Confidence, 2)) + "%", (x, y-fontBottomMargin), fontFace, fontScale, fontColor, fontWeight)
 
     # Display the resulting frame
-    cv2.imshow('Detecting Faces and Predicting Signs...', frame)
+    cv2.imshow('Detecting Faces...', frame)
 
     # Exit loop when 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -92,3 +79,4 @@ cv2.destroyAllWindows()
 
 # Close the database connection
 conn.close()
+ 

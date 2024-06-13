@@ -10,7 +10,7 @@ for filename in os.listdir(dataset_dir):
         if os.path.isfile(file_path):
             os.unlink(file_path)
     except Exception as e:
-        print(f"Error deleting {file_path}: {e}")
+        print(f"Error deleting {file_path}: {e}")  
 
 # Copy files from 'dataset-clusters' directory to 'dataset' directory
 source_dir = 'dataset-clusters'
